@@ -6201,6 +6201,17 @@ export function makeAcpAdapterV2(
               ) === true;
             if (hasModelConfig) {
               yield* runtime.setModel(requestedModel);
+            } else {
+              // ACP v1 agents (e.g. Hermes) select models with session/set_model.
+              const modelState = startResult.sessionSetupResult.models;
+              if (
+                modelState &&
+                modelState.currentModelId !== requestedModel &&
+                modelState.availableModels.some((model) => model.modelId === requestedModel)
+              ) {
+                yield* runtime.setSessionModel(requestedModel);
+                appliedModel = requestedModel;
+              }
             }
           }
           // Same-runtime switches compare against this stored setup, so keep

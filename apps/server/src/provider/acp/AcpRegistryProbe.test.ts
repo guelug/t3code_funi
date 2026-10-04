@@ -21,6 +21,7 @@ import {
   normalizeAcpRegistryAuthMethods,
   normalizeAcpRegistryCommands,
   probeAcpRegistryConfiguration,
+  withLegacyModelState,
 } from "./AcpRegistryProbe.ts";
 import * as AcpRegistrySupport from "./AcpRegistrySupport.ts";
 
@@ -532,5 +533,25 @@ describe("ACP Registry probe", () => {
         }),
       ).reason,
     ).toBe("probe_failed");
+  });
+});
+
+describe("ACP v1 model state fallback", () => {
+  const empty = { models: [], currentModelId: null, configOptions: [] };
+  it("uses session models when no model config option exists, current first", () => {
+    const result = withLegacyModelState(empty, {
+      currentModelId: "b",
+      availableModels: [
+        { modelId: "a", name: "A" },
+        { modelId: "b", name: "B", description: "current" },
+        { modelId: "a", name: "dup" },
+      ],
+    });
+    expect(result.models.map((model) => model.id)).toEqual(["b", "a"]);
+    expect(result.currentModelId).toBe("b");
+  });
+  it("keeps config option models when present", () => {
+    const live = { ...empty, models: [{ id: "x", name: "X", description: null }] };
+    expect(withLegacyModelState(live, { currentModelId: "y", availableModels: [] })).toBe(live);
   });
 });

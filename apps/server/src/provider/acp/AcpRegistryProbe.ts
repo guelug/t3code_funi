@@ -195,6 +195,44 @@ export function normalizeAcpRegistryLiveConfiguration(
   };
 }
 
+/**
+ * ACP v1 agents (e.g. Hermes) advertise models through the session `models`
+ * state instead of a model config option. Use it only when the config option
+ * route produced nothing, keeping the current model inside the bounded list.
+ */
+export function withLegacyModelState(
+  live: AcpRegistryLiveConfiguration,
+  modelState: EffectAcpSchema.SessionModelState | null | undefined,
+): AcpRegistryLiveConfiguration {
+  if (live.models.length > 0 || !modelState) return live;
+  const currentId = boundedOpaqueValue(modelState.currentModelId, MAX_ID_LENGTH) ?? null;
+  const seen = new Set<string>();
+  const models: Array<AcpRegistryProbeModel> = [];
+  const ordered = [
+    ...modelState.availableModels.filter((model) => model.modelId === modelState.currentModelId),
+    ...modelState.availableModels.filter((model) => model.modelId !== modelState.currentModelId),
+  ];
+  for (const model of ordered) {
+    const id = boundedOpaqueValue(model.modelId, MAX_ID_LENGTH);
+    if (id === undefined || seen.has(id)) continue;
+    seen.add(id);
+    models.push({
+      id,
+      name: boundedText(model.name, MAX_NAME_LENGTH) || id,
+      description:
+        model.description == null
+          ? null
+          : boundedText(model.description, MAX_DESCRIPTION_LENGTH) || null,
+    });
+    if (models.length === MAX_MODELS) break;
+  }
+  return {
+    ...live,
+    models,
+    currentModelId: currentId !== null && seen.has(currentId) ? currentId : null,
+  };
+}
+
 const emptyAcpRegistryAvailableCommands = (): AcpRegistryAvailableCommands => ({
   slashCommands: [],
   skills: [],
@@ -246,9 +284,12 @@ export function acpRegistryProbeResult(
   icon: string | null = null,
   spawn?: AcpRegistryAuthSpawnContext,
 ): AcpRegistryProbeResult {
-  const liveConfiguration = normalizeAcpRegistryLiveConfiguration(
-    started.sessionSetupResult.configOptions ?? [],
-    parseSessionModeState(started.sessionSetupResult),
+  const liveConfiguration = withLegacyModelState(
+    normalizeAcpRegistryLiveConfiguration(
+      started.sessionSetupResult.configOptions ?? [],
+      parseSessionModeState(started.sessionSetupResult),
+    ),
+    started.sessionSetupResult.models,
   );
   return AcpRegistryProbeResult.make({
     instanceId,
