@@ -790,7 +790,9 @@ describe("AcpRegistrySupport", () => {
       });
       const result = yield* resolver.search({ query: "" });
 
-      expect(result.agents.map((agent) => agent.id)).toEqual([valid.id]);
+      expect(result.agents.map((agent) => agent.id).filter((id) => id !== "hermes")).toEqual([
+        valid.id,
+      ]);
     }).pipe(
       Effect.scoped,
       Effect.provide(
@@ -825,7 +827,7 @@ describe("AcpRegistrySupport", () => {
       });
       const result = yield* resolver.search({ query: "" });
 
-      expect(result.agents).toEqual([]);
+      expect(result.agents.filter((agent) => agent.id !== "hermes")).toEqual([]);
     }).pipe(
       Effect.scoped,
       Effect.provide(
@@ -1536,4 +1538,18 @@ describe("acpRegistryManagedBinaryDirectories", () => {
       expect(missing).toEqual([]);
     }).pipe(Effect.provide(NodeServices.layer), Effect.scoped),
   );
+});
+
+describe("FUNIBER local agents", () => {
+  it("appends Hermes once and never duplicates it", () => {
+    const once = AcpRegistrySupport.withFuniberLocalAgents([]);
+    expect(once.map((agent) => agent.id)).toEqual(["hermes"]);
+    expect(AcpRegistrySupport.withFuniberLocalAgents(once)).toHaveLength(1);
+  });
+
+  it("runs Hermes through the user's own executable unless overridden", () => {
+    expect(AcpRegistrySupport.localAgentCommand("hermes", "")).toBe("hermes");
+    expect(AcpRegistrySupport.localAgentCommand("hermes", " /opt/h/hermes ")).toBe("/opt/h/hermes");
+    expect(AcpRegistrySupport.localAgentCommand("devin", "")).toBe("");
+  });
 });

@@ -168,6 +168,41 @@ const AcpRegistryIndexEnvelope = Schema.Struct({
   version: BoundedVersion,
   agents: Schema.Array(Schema.Unknown).check(Schema.isMaxLength(512)),
 });
+/**
+ * FUNIBER fork: agents that are not in the official ACP Registry but speak ACP
+ * over stdio. They are appended to every decoded index (network or cache) and
+ * run through the user's own executable (`commandPath`, default `hermes`), so
+ * nothing is downloaded: the distribution below only satisfies the schema.
+ */
+export const FUNIBER_HERMES_AGENT_ID = "hermes";
+const FUNIBER_HERMES_AGENT: AcpRegistryAgent = {
+  id: FUNIBER_HERMES_AGENT_ID,
+  name: "Hermes Agent",
+  version: "local",
+  description:
+    "Hermes Agent by Nous Research, run locally with `hermes acp`. Uses your own Hermes providers, OAuth and skills.",
+  authors: ["Nous Research"],
+  license: "MIT",
+  website: "https://hermes-agent.nousresearch.com",
+  repository: "https://github.com/NousResearch/hermes-agent",
+  distribution: { uvx: { package: "hermes-agent==0.0.0", args: ["acp"] } },
+};
+
+export function withFuniberLocalAgents(
+  agents: ReadonlyArray<AcpRegistryAgent>,
+): ReadonlyArray<AcpRegistryAgent> {
+  return agents.some((agent) => agent.id === FUNIBER_HERMES_AGENT_ID)
+    ? agents
+    : [...agents, FUNIBER_HERMES_AGENT];
+}
+
+/** Local agents default to their own executable; an explicit override still wins. */
+export function localAgentCommand(agentId: string, commandPath: string): string {
+  const explicit = commandPath.trim();
+  if (explicit.length > 0) return explicit;
+  return agentId === FUNIBER_HERMES_AGENT_ID ? "hermes" : "";
+}
+
 export interface AcpRegistryIndex {
   readonly version: string;
   readonly agents: ReadonlyArray<AcpRegistryAgent>;
@@ -717,7 +752,10 @@ export const makeAcpRegistryCatalog = Effect.fn("AcpRegistryCatalog.make")(funct
     if (discarded > 0) {
       yield* Effect.logWarning("ignored invalid ACP Registry entries", { discarded });
     }
-    return { version: envelope.version, agents } satisfies AcpRegistryIndex;
+    return {
+      version: envelope.version,
+      agents: withFuniberLocalAgents(agents),
+    } satisfies AcpRegistryIndex;
   });
 
   const readCachedRegistry = fileSystem
@@ -1589,6 +1627,15 @@ export const makeAcpRegistryCatalog = Effect.fn("AcpRegistryCatalog.make")(funct
       const registry = yield* refreshRegistry();
       const agent = yield* findAgent(registry, input.agentId);
       const distribution = yield* compatibleDistribution(agent, "auto");
+      if (agent.id === FUNIBER_HERMES_AGENT_ID) {
+        // Local agent: the user's own executable runs it, nothing to install.
+        return {
+          agentId: agent.id,
+          version: agent.version,
+          distribution: distribution.kind,
+          prepared: true,
+        } satisfies AcpRegistryPrepareResult;
+      }
       if (distribution.kind === "binary") {
         // A PATH executable can be a different version with different ACP
         // capabilities. Only an explicit command override opts into that copy.
@@ -1627,7 +1674,7 @@ export const makeAcpRegistryCatalog = Effect.fn("AcpRegistryCatalog.make")(funct
         return { status: "unsupported", agentId, version: agent.version } as const;
       }
 
-      const commandOverride = settings.commandPath.trim();
+      const commandOverride = localAgentCommand(agentId, settings.commandPath);
       if (commandOverride.length > 0) {
         const available =
           resolveExecutable(commandOverride, platform, environment ?? hostEnvironment) !==
@@ -1728,7 +1775,7 @@ export const makeAcpRegistryCatalog = Effect.fn("AcpRegistryCatalog.make")(funct
       let args: ReadonlyArray<string>;
       let commandBinDirectory: string | undefined;
       const effectiveEnvironment = environment ?? hostEnvironment;
-      const commandOverride = settings.commandPath.trim();
+      const commandOverride = localAgentCommand(agentId, settings.commandPath);
       if (commandOverride.length > 0) {
         const resolvedOverride = resolveExecutable(commandOverride, platform, effectiveEnvironment);
         if (resolvedOverride === undefined) {
