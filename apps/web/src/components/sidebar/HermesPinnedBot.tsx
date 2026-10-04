@@ -18,9 +18,14 @@ import { usePrimaryEnvironmentId } from "../../state/environments";
 import { filesystemEnvironment } from "../../state/filesystem";
 import { useEnvironmentQuery } from "../../state/query";
 import { primaryServerProvidersAtom } from "../../state/server";
+import { getProjectFileQueryAtom } from "../files/projectFilesQueryState";
 import {
   buildHermesProviderInstance,
   HERMES_DEFAULT_PROFILE,
+  hermesAgentNameFromSoul,
+  hermesBotDisplayName,
+  hermesRootFromProfileHome,
+  hermesSoulPath,
   hermesInstanceIdForProfile,
   hermesProfilesFromEntries,
   type HermesProfile,
@@ -72,14 +77,34 @@ function HermesPinnedBotRow({
     home: null,
   };
 
+  // FUNIBER fork: the bot takes its persona name from the profile's SOUL.md.
+  const hermesRoot = useMemo(() => {
+    const named = profiles.find((entry) => entry.home !== null)?.home;
+    return named ? hermesRootFromProfileHome(named) : null;
+  }, [profiles]);
+  const soulPath = hermesSoulPath(profile, hermesRoot);
+  const soulQuery = useEnvironmentQuery(
+    soulPath && hermesRoot ? getProjectFileQueryAtom(environmentId, hermesRoot, soulPath) : null,
+  );
+  const soulName = soulQuery.data ? hermesAgentNameFromSoul(soulQuery.data.contents) : null;
+  const botName = hermesBotDisplayName(profile, soulName);
+
   const ensureInstance = useCallback(
     async (target: HermesProfile) => {
       const instanceId = hermesInstanceIdForProfile(target.name);
-      if (settings.providerInstances?.[instanceId] !== undefined) return instanceId;
+      const instance = buildHermesProviderInstance(
+        target,
+        target.name === profile.name ? soulName : null,
+      );
+      const existing = settings.providerInstances?.[instanceId];
+      if (existing !== undefined && existing.displayName === instance.displayName) {
+        return instanceId;
+      }
       const result = await persist({
-        operation: "create",
+        operation: existing === undefined ? "create" : "upsert",
         instanceId,
-        instance: buildHermesProviderInstance(target),
+        instance:
+          existing === undefined ? instance : { ...existing, displayName: instance.displayName },
       });
       if (result._tag === "Failure") {
         toastManager.add({
@@ -91,7 +116,7 @@ function HermesPinnedBotRow({
       }
       return instanceId;
     },
-    [persist, settings.providerInstances],
+    [persist, profile.name, settings.providerInstances, soulName],
   );
 
   const openHermes = useCallback(
@@ -138,7 +163,7 @@ function HermesPinnedBotRow({
         onClick={() => void openHermes(profile)}
         disabled={busy}
         className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-sm text-foreground outline-hidden hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
-        aria-label={`Open Hermes (${profile.name} profile)`}
+        aria-label={`Open ${botName} (Hermes ${profile.name} profile)`}
       >
         <img
           src="/hermes-icon.svg"
@@ -146,7 +171,7 @@ function HermesPinnedBotRow({
           aria-hidden
           className="size-6 shrink-0 select-none rounded-md"
         />
-        <span className="min-w-0 flex-1 truncate font-medium">Hermes</span>
+        <span className="min-w-0 flex-1 truncate font-medium">{botName}</span>
         <span className="truncate text-xs text-muted-foreground">
           {busy ? "Opening…" : profile.name}
         </span>

@@ -49,11 +49,12 @@ export function hermesInstanceIdForProfile(profileName: string): ProviderInstanc
 /** Provider instance that runs the user's own `hermes` executable over ACP for one profile. */
 export function buildHermesProviderInstance(
   profile: HermesProfile = { name: HERMES_DEFAULT_PROFILE, home: null },
+  personaName: string | null = null,
 ): ProviderInstanceConfig {
   return {
     driver: ProviderDriverKind.make("acpRegistry"),
     enabled: true,
-    displayName: `Hermes · ${profile.name}`,
+    displayName: `${personaName ?? "Hermes"} · ${profile.name}`,
     ...(profile.home === null
       ? {}
       : { environment: [{ name: "HERMES_HOME", value: profile.home, sensitive: false }] }),
@@ -70,4 +71,40 @@ export function hermesProfilesFromEntries(
     .map((entry) => ({ name: entry.name, home: entry.fullPath }))
     .sort((left, right) => left.name.localeCompare(right.name));
   return [{ name: HERMES_DEFAULT_PROFILE, home: null }, ...named];
+}
+
+/**
+ * FUNIBER fork: the agent's own name from its SOUL.md (`You are **Rebe**`, `# Rebe`
+ * under IDENTITY, or `name: Rebe`), so the pinned bot reads like a persona.
+ */
+export function hermesAgentNameFromSoul(soul: string): string | null {
+  const patterns = [
+    /You are \*\*([^*\n]{1,32})\*\*/,
+    /^\s*(?:agent[_ ]?)?name\s*:\s*["']?([^"'\n]{1,32})["']?\s*$/im,
+    /^#\s*(?:I am|Soy)\s+([^\n]{1,32})$/im,
+  ];
+  for (const pattern of patterns) {
+    const name = pattern.exec(soul)?.[1]?.trim();
+    if (name && !/^hermes$/i.test(name)) return name;
+  }
+  return null;
+}
+
+/** `~/.hermes` root derived from any `~/.hermes/profiles/<name>` path. */
+export function hermesRootFromProfileHome(home: string): string | null {
+  const match = /^(.*)[/\\]profiles[/\\][^/\\]+[/\\]?$/.exec(home);
+  return match?.[1] ?? null;
+}
+
+/** Absolute SOUL.md for a profile (default lives at the Hermes root). */
+export function hermesSoulPath(profile: HermesProfile, hermesRoot: string | null): string | null {
+  const home = profile.home ?? hermesRoot;
+  return home ? `${home.replace(/[/\\]$/, "")}/SOUL.md` : null;
+}
+
+/** Display name: SOUL persona name, else the profile name title-cased. */
+export function hermesBotDisplayName(profile: HermesProfile, soulName: string | null): string {
+  if (soulName) return soulName;
+  if (profile.name === HERMES_DEFAULT_PROFILE) return "Hermes";
+  return profile.name.charAt(0).toUpperCase() + profile.name.slice(1);
 }

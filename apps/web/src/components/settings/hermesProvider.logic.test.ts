@@ -6,6 +6,10 @@ import {
   hermesInstanceIdForProfile,
   hermesProfilesFromEntries,
   nextHermesInstanceId,
+  hermesAgentNameFromSoul,
+  hermesBotDisplayName,
+  hermesRootFromProfileHome,
+  hermesSoulPath,
 } from "./hermesProvider.logic";
 
 describe("hermes provider", () => {
@@ -59,5 +63,27 @@ describe("hermes provider", () => {
     expect(nextHermesInstanceId({ acpRegistry_hermes: { driver: "acpRegistry" } })).toBe(
       "acpRegistry_hermes_2",
     );
+  });
+});
+
+describe("FUNIBER: Hermes persona names", () => {
+  it("reads the persona from SOUL.md", () => {
+    expect(hermesAgentNameFromSoul("# IDENTITY\n\nYou are **Rebe**, Pedro's agent.")).toBe("Rebe");
+    expect(hermesAgentNameFromSoul("You are **Son of Anton**")).toBe("Son of Anton");
+    expect(hermesAgentNameFromSoul("name: Eleonor\n")).toBe("Eleonor");
+    expect(hermesAgentNameFromSoul("You are **Hermes**")).toBeNull();
+    expect(hermesAgentNameFromSoul("plain text")).toBeNull();
+  });
+  it("finds SOUL.md for default and named profiles", () => {
+    const root = hermesRootFromProfileHome("/Users/p/.hermes/profiles/funiber");
+    expect(root).toBe("/Users/p/.hermes");
+    expect(hermesSoulPath({ name: "default", home: null }, root)).toBe("/Users/p/.hermes/SOUL.md");
+    expect(
+      hermesSoulPath({ name: "funiber", home: "/Users/p/.hermes/profiles/funiber" }, root),
+    ).toBe("/Users/p/.hermes/profiles/funiber/SOUL.md");
+  });
+  it("falls back to the profile name", () => {
+    expect(hermesBotDisplayName({ name: "writer", home: "/x" }, null)).toBe("Writer");
+    expect(hermesBotDisplayName({ name: "default", home: null }, "Rebe")).toBe("Rebe");
   });
 });
