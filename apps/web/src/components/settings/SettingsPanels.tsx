@@ -445,10 +445,25 @@ function AboutVersionSection() {
           </Tooltip>
         }
       />
+      <SettingsRow
+        title="Based on T3 Code"
+        description="Funi Code is a fork of the open-source T3 Code (MIT) by T3 Tools Inc."
+        control={
+          <Button
+            size="sm"
+            variant="outline"
+            render={
+              <a href="https://github.com/pingdotgg/t3code" target="_blank" rel="noreferrer" />
+            }
+          >
+            View original
+          </Button>
+        }
+      />
       {hasDesktopBridge ? (
         <SettingsRow
           title="Update track"
-          description="Use stable releases or nightly builds. Switch back anytime."
+          description="Funi Code stable releases."
           control={
             <Select
               value={selectedUpdateChannel}
@@ -469,9 +484,6 @@ function AboutVersionSection() {
               <SelectPopup align="end" alignItemWithTrigger={false}>
                 <SelectItem hideIndicator value="latest">
                   Stable
-                </SelectItem>
-                <SelectItem hideIndicator value="nightly">
-                  Nightly
                 </SelectItem>
               </SelectPopup>
             </Select>
@@ -3365,7 +3377,7 @@ export function GeneralSettingsPanel() {
         />
         <SettingsRow
           {...searchableSetting("open-source-licenses")}
-          description="Notices for dependencies, assets, and optional tools used by T3 Code."
+          description="Notices for dependencies, assets, and optional tools used by Funi Code."
           control={
             <Button
               render={<Link to="/settings/open-source-licenses" />}

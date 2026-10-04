@@ -119,7 +119,7 @@ describe("DesktopSettings", () => {
     ),
   );
 
-  it("defaults packaged nightly builds to the nightly update channel", () => {
+  it("defaults packaged nightly builds to the stable update channel", () => {
     assert.deepEqual(
       DesktopAppSettings.resolveDefaultDesktopSettings("0.0.17-nightly.20260415.1"),
       {
@@ -130,7 +130,7 @@ describe("DesktopSettings", () => {
         serverExposureMode: "local-only",
         tailscaleServeEnabled: false,
         tailscaleServePort: 443,
-        updateChannel: "nightly",
+        updateChannel: "latest",
         updateChannelConfiguredByUser: false,
         wslBackendEnabled: false,
         wslOnly: false,
@@ -325,7 +325,7 @@ describe("DesktopSettings", () => {
             serverExposureMode: "network-accessible",
             tailscaleServeEnabled: true,
             tailscaleServePort: 8443,
-            updateChannel: "nightly",
+            updateChannel: "latest",
             updateChannelConfiguredByUser: true,
             wslBackendEnabled: false,
             wslOnly: false,
@@ -402,7 +402,7 @@ describe("DesktopSettings", () => {
           serverExposureMode: "local-only",
           tailscaleServeEnabled: false,
           tailscaleServePort: 443,
-          updateChannel: "nightly",
+          updateChannel: "latest",
           updateChannelConfiguredByUser: false,
           wslBackendEnabled: false,
           wslOnly: false,

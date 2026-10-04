@@ -21,6 +21,7 @@ import {
   FileDiff,
   Files,
   Globe2,
+  Palette,
   Plus,
   TerminalSquare,
 } from "lucide-react";
@@ -123,6 +124,8 @@ interface RightPanelTabsProps {
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
   onAddDevice: () => void;
+  /** Fork addition: Design surface launcher; omitted by surfaces that cannot host it. */
+  onAddDesign?: () => void;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
@@ -130,6 +133,7 @@ interface RightPanelTabsProps {
   pullRequestAvailable: boolean;
   pullRequestsAvailable: boolean;
   deviceAvailable: boolean;
+  designAvailable?: boolean;
   pullRequestStatusSeeds?: Readonly<Record<string, PullRequestTabStatusSeed>>;
   children: ReactNode;
 }
@@ -151,13 +155,14 @@ export function shouldOpenDefaultBrowserProfileFromMenuClick(
 }
 
 const SURFACE_DISABLED_REASONS = {
-  browser: "Browser previews are only available in the T3 Code desktop app.",
+  browser: "Browser previews are only available in the Funi Code desktop app.",
   terminal: "Terminal surfaces are only available from a project thread.",
   files: "Files are only available when a project is open.",
   diff: "Diff is only available for server threads in Git repositories.",
   pullRequest: "This thread's branch has no pull request yet.",
   pullRequests: "No linked pull requests are available for this thread.",
   device: "Devices are only available from a thread.",
+  design: "Design is only available when a project is open.",
 } as const;
 
 /** Overlays that must win over the launcher's letter shortcuts. */
@@ -181,6 +186,7 @@ const SURFACE_UNAVAILABLE_HINTS = {
   pullRequest: "No pull request on this branch yet.",
   pullRequests: "No linked pull requests available.",
   device: "Available from a thread.",
+  design: "Available when a project is open.",
 } as const;
 
 type TabContextMenuAction =
@@ -320,6 +326,8 @@ function RightPanelEmptyState(props: {
   onAddPullRequest: () => void;
   onAddPullRequests: () => void;
   onAddDevice: () => void;
+  onAddDesign?: (() => void) | undefined;
+  designAvailable?: boolean | undefined;
   browserAvailable: boolean;
   terminalAvailable: boolean;
   diffAvailable: boolean;
@@ -388,6 +396,14 @@ function RightPanelEmptyState(props: {
       available: props.deviceAvailable,
       disabledReason: SURFACE_UNAVAILABLE_HINTS.device,
       onClick: props.onAddDevice,
+    },
+    {
+      label: "Design",
+      icon: Palette,
+      shortcut: "G",
+      available: props.designAvailable === true && props.onAddDesign !== undefined,
+      disabledReason: SURFACE_UNAVAILABLE_HINTS.design,
+      onClick: () => props.onAddDesign?.(),
     },
   ] as const;
 
@@ -596,6 +612,8 @@ function surfaceTitle(
       return `#${surface.number}`;
     case "pull-requests":
       return "Pull requests";
+    case "design":
+      return "Design";
     case "device":
       return surface.title ?? surface.target?.name ?? "Device";
     case "preview": {
@@ -687,6 +705,8 @@ function SurfaceIcon({
       ) : (
         <Smartphone className="size-3 shrink-0" />
       );
+    case "design":
+      return <Palette className="size-3 shrink-0" />;
   }
 }
 
@@ -888,6 +908,14 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
       available: props.deviceAvailable,
       disabledReason: SURFACE_DISABLED_REASONS.device,
       onClick: props.onAddDevice,
+    },
+    {
+      label: "Design",
+      icon: Palette,
+      shortcut: "G",
+      available: props.designAvailable === true && props.onAddDesign !== undefined,
+      disabledReason: SURFACE_DISABLED_REASONS.design,
+      onClick: () => props.onAddDesign?.(),
     },
   ] as const;
 
@@ -1371,6 +1399,8 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             onAddPullRequest={props.onAddPullRequest}
             onAddPullRequests={props.onAddPullRequests}
             onAddDevice={props.onAddDevice}
+            onAddDesign={props.onAddDesign}
+            designAvailable={props.designAvailable}
             browserAvailable={props.browserAvailable}
             terminalAvailable={props.terminalAvailable}
             diffAvailable={props.diffAvailable}

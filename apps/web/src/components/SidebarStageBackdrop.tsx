@@ -5,7 +5,7 @@ import { APP_STAGE_LABEL } from "../branding";
 import { resolveServerBackedAppStageLabel } from "../branding.logic";
 import { primaryServerConfigAtom } from "../state/server";
 
-export type SidebarStageBackdropVariant = "nightly" | "dev";
+export type SidebarStageBackdropVariant = "nightly" | "dev" | "funiber";
 export type EnvironmentIdentificationPillLabel = "Dev" | "Nightly";
 
 // A wide viewBox keeps the 96-unit art height at a fixed scale while sidebar resizing reveals
@@ -18,9 +18,9 @@ export function resolveSidebarStageBackdropVariant(
 ): SidebarStageBackdropVariant | null {
   if (!enabled) return null;
   const normalized = stageLabel.trim().toLowerCase();
-  if (normalized === "nightly") return "nightly";
   if (normalized === "dev") return "dev";
-  return null;
+  // FUNIBER fork: every non-dev build wears the FUNIBER artwork.
+  return "funiber";
 }
 
 export function resolveEnvironmentIdentificationPillLabel(
@@ -59,10 +59,12 @@ export function SidebarStageBackdrop({ variant }: { variant: SidebarStageBackdro
 }
 
 export function StageBackdropArt({ variant }: { variant: SidebarStageBackdropVariant }) {
+  if (variant === "funiber") return <FuniberArt />;
   return variant === "nightly" ? <NightlySkyArt /> : <DevBlueprintArt />;
 }
 
 export function StageBackdropButtonArt({ variant }: { variant: SidebarStageBackdropVariant }) {
+  if (variant === "funiber") return <FuniberArt compact />;
   return variant === "nightly" ? <NightlySkyArt compact /> : <DevBlueprintArt compact />;
 }
 
@@ -386,6 +388,95 @@ function DevBlueprintArt({ compact = false }: { compact?: boolean }) {
       <rect width="100%" height="96" fill={`url(#${majorGridId})`} />
       <rect width="100%" height="6" fill={`url(#${rulerId})`} />
       <rect width="100%" height="96" fill={`url(#${annotationsId})`} />
+    </svg>
+  );
+}
+
+// FUNIBER palette: brand blues #006696/#00699E over a deep navy, with the
+// logo's grey-blue globe lines as the motif. Static art, no animation.
+const FUNIBER_NODES: ReadonlyArray<{ cx: number; cy: number; r: number; opacity: number }> = [
+  { cx: 22, cy: 14, r: 0.8, opacity: 0.8 },
+  { cx: 64, cy: 30, r: 0.6, opacity: 0.55 },
+  { cx: 108, cy: 12, r: 0.9, opacity: 0.85 },
+  { cx: 150, cy: 38, r: 0.6, opacity: 0.5 },
+  { cx: 196, cy: 18, r: 0.8, opacity: 0.75 },
+  { cx: 236, cy: 44, r: 0.6, opacity: 0.5 },
+  { cx: 290, cy: 16, r: 0.9, opacity: 0.8 },
+  { cx: 334, cy: 34, r: 0.6, opacity: 0.55 },
+  { cx: 372, cy: 10, r: 0.8, opacity: 0.7 },
+];
+
+function FuniberArt({ compact = false }: { compact?: boolean }) {
+  const idPrefix = useId().replaceAll(":", "");
+  const skyId = `${idPrefix}-funiber-sky`;
+  const glowId = `${idPrefix}-funiber-glow`;
+  const globeId = `${idPrefix}-funiber-globe`;
+  const tileId = `${idPrefix}-funiber-tile`;
+
+  return (
+    <svg
+      data-stage-art="funiber"
+      className="h-full w-full"
+      fill="none"
+      preserveAspectRatio="xMinYMin slice"
+      viewBox={compact ? "96 0 8192 96" : STAGE_BACKDROP_VIEW_BOX}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        <linearGradient
+          id={skyId}
+          x1="0"
+          y1="0"
+          x2="384"
+          y2="96"
+          gradientUnits="userSpaceOnUse"
+          spreadMethod="reflect"
+        >
+          <stop stopColor="#04223a" />
+          <stop offset="0.55" stopColor="#00507a" />
+          <stop offset="1" stopColor="#00699e" />
+        </linearGradient>
+        <radialGradient
+          id={glowId}
+          cx="0"
+          cy="0"
+          r="1"
+          gradientTransform="translate(300 20) rotate(150) scale(170 100)"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop stopColor="#3fb4ea" stopOpacity="0.42" />
+          <stop offset="0.55" stopColor="#0a85c2" stopOpacity="0.16" />
+          <stop offset="1" stopColor="#04223a" stopOpacity="0" />
+        </radialGradient>
+        <pattern id={globeId} width="384" height="96" patternUnits="userSpaceOnUse">
+          <g stroke="#bfe3f5" strokeLinecap="round" strokeWidth="0.7">
+            <circle cx="300" cy="62" r="58" strokeOpacity="0.38" />
+            <ellipse cx="300" cy="62" rx="28" ry="58" strokeOpacity="0.28" />
+            <ellipse cx="300" cy="62" rx="48" ry="58" strokeOpacity="0.2" />
+            <path d="M242 62H358" strokeOpacity="0.3" />
+            <path d="M250 38C280 44 320 44 350 38" strokeOpacity="0.26" />
+            <path d="M250 86C280 80 320 80 350 86" strokeOpacity="0.26" />
+          </g>
+          <g stroke="#9fd6f0" strokeOpacity="0.28" strokeWidth="0.5">
+            <path d="M22 14L64 30L108 12L150 38L196 18L236 44" />
+            <path d="M236 44L290 16L334 34L372 10" strokeOpacity="0.2" />
+          </g>
+          <g fill="#e6f5fc">
+            {FUNIBER_NODES.map((node) => (
+              <circle
+                key={`${node.cx}-${node.cy}`}
+                cx={node.cx}
+                cy={node.cy}
+                r={node.r}
+                fillOpacity={node.opacity}
+              />
+            ))}
+          </g>
+        </pattern>
+      </defs>
+      <rect id={tileId} width="100%" height="96" fill={`url(#${skyId})`} />
+      <rect width="100%" height="96" fill={`url(#${glowId})`} />
+      <rect width="100%" height="96" fill={`url(#${globeId})`} />
     </svg>
   );
 }

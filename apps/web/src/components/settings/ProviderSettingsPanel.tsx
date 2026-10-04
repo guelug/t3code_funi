@@ -84,6 +84,8 @@ import { Toggle, ToggleGroup } from "../ui/toggle-group";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { AddProviderInstanceDialog } from "./AddProviderInstanceDialog";
+import { AddByokProviderDialog } from "./AddByokProviderDialog";
+import type { ByokPreset } from "./byokProvider.logic";
 import { ExpandableText } from "./ExpandableText";
 import { ProviderInstanceCard } from "./ProviderInstanceCard";
 import { UsageProviderSettings } from "./UsageProviderSettings";
@@ -627,6 +629,7 @@ export function EnvironmentProviderSettings({
   });
   const [isRefreshingProviders, setIsRefreshingProviders] = useState(false);
   const [isAddInstanceDialogOpen, setIsAddInstanceDialogOpen] = useState(false);
+  const [byokPreset, setByokPreset] = useState<ByokPreset | null>(null);
   const [selectedInstanceId, setSelectedInstanceId] = useState<ProviderInstanceId | null>(
     targetInstanceId ?? null,
   );
@@ -1226,6 +1229,12 @@ export function EnvironmentProviderSettings({
                   />
                   <TooltipPopup side="top">Refresh provider status</TooltipPopup>
                 </Tooltip>
+                <Button size="xs" variant="ghost-muted" onClick={() => setByokPreset("openrouter")}>
+                  OpenRouter
+                </Button>
+                <Button size="xs" variant="ghost-muted" onClick={() => setByokPreset("custom")}>
+                  Custom API
+                </Button>
                 <Tooltip>
                   <TooltipTrigger
                     render={
@@ -1373,6 +1382,16 @@ export function EnvironmentProviderSettings({
           }
         />
       </SettingsSection>
+
+      {byokPreset ? (
+        <AddByokProviderDialog
+          open
+          environmentId={environmentId}
+          preset={byokPreset}
+          onOpenChange={(open) => !open && setByokPreset(null)}
+          onCreated={setSelectedInstanceId}
+        />
+      ) : null}
 
       {isAddInstanceDialogOpen ? (
         <AddProviderInstanceDialog

@@ -1,5 +1,7 @@
 import { ComputerUseAppIcon } from "~/components/Icons";
 import { useChatCanvas } from "./ChatCanvasContext";
+import { QuestionFormCard } from "../design/QuestionFormCard";
+import { splitQuestionFormSegments } from "../design/questionForm";
 import { WorkLogBlock, WorkLogButton, WorkLogDetails, WorkLogList, WorkLogRow } from "./WorkLog";
 import { PullRequestGlyph } from "../pullRequest/pullRequestIcons";
 import type { WorktreeSetupSnapshot } from "@t3tools/contracts";
@@ -115,7 +117,6 @@ import ChatMarkdown, { ChatMarkdownAssetImage } from "../ChatMarkdown";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Root, RootContent } from "mdast";
-import { T3Wordmark } from "../T3Wordmark";
 import { ThreadContextChip } from "../ThreadContextChip";
 import {
   BotIcon,
@@ -311,6 +312,9 @@ interface TimelineRowSharedState {
   activeThreadEnvironmentId: EnvironmentId;
   onRevertToTurnCount: (targetTurnCount: number, messageId: MessageId) => void;
   onUseArtifactTemplate: (template: CodexArtifactTemplate) => void;
+  /** Sends question-form answers as a normal user message; null when unavailable. */
+  onSendFormAnswers: ((message: string) => void) | null;
+  latestAssistantMessageId: string | null;
   onRunShellCommand: ((command: string) => void) | undefined;
   onImageExpand: (preview: ExpandedImagePreview) => void;
   displayThreadKey?: string;
@@ -458,6 +462,7 @@ interface MessagesTimelineProps {
   supportsConversationRollback: boolean;
   onRevertToTurnCount: (targetTurnCount: number, messageId: MessageId) => void;
   onUseArtifactTemplate?: (template: CodexArtifactTemplate) => void;
+  onSendFormAnswers?: (message: string) => void;
   onRunShellCommand?: (command: string) => void;
   isRevertingCheckpoint: boolean;
   onImageExpand: (preview: ExpandedImagePreview) => void;
@@ -533,6 +538,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   supportsConversationRollback,
   onRevertToTurnCount,
   onUseArtifactTemplate = NOOP_USE_ARTIFACT_TEMPLATE,
+  onSendFormAnswers,
   onRunShellCommand,
   isRevertingCheckpoint,
   onImageExpand,
@@ -1148,6 +1154,13 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     };
   }, [timelineViewportElement, rows.length, reportContentOverflow, chatWidth]);
 
+  const latestAssistantMessageId = useMemo(() => {
+    for (let i = timelineEntries.length - 1; i >= 0; i--) {
+      const entry = timelineEntries[i]!;
+      if (entry.kind === "message" && entry.message.role === "assistant") return entry.message.id;
+    }
+    return null;
+  }, [timelineEntries]);
   const sharedState = useMemo<TimelineRowSharedState>(
     () => ({
       citationRequest: readyCitationRequest,
@@ -1168,6 +1181,8 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       onImageExpand,
       onFileOpen,
       onUseArtifactTemplate,
+      onSendFormAnswers: onSendFormAnswers ?? null,
+      latestAssistantMessageId,
       onFileDownload,
       openPullRequest,
       onOpenTurnDiff,
@@ -1203,6 +1218,8 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       onImageExpand,
       onFileOpen,
       onUseArtifactTemplate,
+      onSendFormAnswers,
+      latestAssistantMessageId,
       onFileDownload,
       openPullRequest,
       onOpenTurnDiff,
@@ -2496,11 +2513,22 @@ function AssistantTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "mess
   const ctx = use(TimelineRowCtx);
   const messageText = row.message.text || (row.message.streaming ? "" : "(empty response)");
   const renderedText = useMemo(() => repairMarkdownFileLinks(messageText), [messageText]);
+  // Cheap guard: only parse messages that can contain a form (keeps the hot path allocation-free).
+  const formSegments = useMemo(() => {
+    if (!messageText.includes("<question-form") && !messageText.includes("<ask-question"))
+      return null;
+    const segments = splitQuestionFormSegments(messageText);
+    return segments.some((segment) => segment.kind === "form") ? segments : null;
+  }, [messageText]);
+  const formInteractive =
+    ctx.onSendFormAnswers !== null &&
+    ctx.latestAssistantMessageId === row.message.id &&
+    !row.message.streaming;
 
   return (
     <>
       <div className="relative min-w-0 px-1 py-0.5">
-        <MessageAuthorHeading>T3 Code</MessageAuthorHeading>
+        <MessageAuthorHeading>Funi Code</MessageAuthorHeading>
         <AssistantCitationSource
           messageId={row.message.id}
           {...(ctx.threadRef ? { threadRef: ctx.threadRef } : {})}
@@ -2508,18 +2536,45 @@ function AssistantTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "mess
           request={ctx.citationRequest}
           listRef={ctx.listRef}
         >
-          <ChatMarkdown
-            text={renderedText}
-            cwd={ctx.markdownCwd}
-            threadRef={ctx.threadRef ?? undefined}
-            isStreaming={Boolean(row.message.streaming)}
-            lineBreaks={shouldPreserveAssistantLineBreaks(messageText)}
-            skills={ctx.skills}
-            headingLevelOffset={MESSAGE_HEADING_LEVEL}
-            onUseArtifactTemplate={ctx.onUseArtifactTemplate}
-            onRunShellCommand={ctx.onRunShellCommand}
-            onImageExpand={ctx.onImageExpand}
-          />
+          {formSegments === null ? (
+            <ChatMarkdown
+              text={renderedText}
+              cwd={ctx.markdownCwd}
+              threadRef={ctx.threadRef ?? undefined}
+              isStreaming={Boolean(row.message.streaming)}
+              lineBreaks={shouldPreserveAssistantLineBreaks(messageText)}
+              skills={ctx.skills}
+              headingLevelOffset={MESSAGE_HEADING_LEVEL}
+              onUseArtifactTemplate={ctx.onUseArtifactTemplate}
+              onRunShellCommand={ctx.onRunShellCommand}
+              onImageExpand={ctx.onImageExpand}
+            />
+          ) : (
+            formSegments.map((segment, index) =>
+              segment.kind === "form" ? (
+                <QuestionFormCard
+                  key={`form-${index}`}
+                  form={segment.form}
+                  disabled={!formInteractive}
+                  onSubmit={(message) => ctx.onSendFormAnswers?.(message)}
+                />
+              ) : (
+                <ChatMarkdown
+                  key={`text-${index}`}
+                  text={repairMarkdownFileLinks(segment.text)}
+                  cwd={ctx.markdownCwd}
+                  threadRef={ctx.threadRef ?? undefined}
+                  isStreaming={Boolean(row.message.streaming)}
+                  lineBreaks={shouldPreserveAssistantLineBreaks(segment.text)}
+                  skills={ctx.skills}
+                  headingLevelOffset={MESSAGE_HEADING_LEVEL}
+                  onUseArtifactTemplate={ctx.onUseArtifactTemplate}
+                  onRunShellCommand={ctx.onRunShellCommand}
+                  onImageExpand={ctx.onImageExpand}
+                />
+              ),
+            )
+          )}
         </AssistantCitationSource>
         <AssistantChangedFilesSection
           turnSummary={row.assistantTurnDiffSummary}
@@ -4754,7 +4809,7 @@ function WorkEntryIcon({ name, className }: { name: WorkEntryIconName; className
     case "device":
       return <SmartphoneIcon className={className} aria-hidden />;
     case "t3-code":
-      return <T3Wordmark className={className} aria-hidden />;
+      return <img src="/funiber-logo.svg" alt="" className={className} aria-hidden />;
     case "check":
       return <CheckIcon className={className} aria-hidden />;
     case "circle-alert":

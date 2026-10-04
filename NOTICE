@@ -1,0 +1,33 @@
+FUNIBER Code (fork of T3 Code)
+
+Third-party notices
+
+Open Design (https://github.com/nexu-io/open-design), v0.23.1 — Apache License 2.0
+  Copyright the Open Design contributors. Licensed under the Apache License,
+  Version 2.0; you may obtain a copy at http://www.apache.org/licenses/LICENSE-2.0.
+  Used in apps/web/src/components/design/:
+  - designPrompt.ts, designDirections.ts, questionForm.ts: adapted (rewritten and
+    shortened for T3 providers; daemon <artifact>/TodoWrite protocol removed) from
+    packages/contracts/src/prompts/{discovery,directions}.ts and
+    apps/web/src/artifacts/question-form.ts.
+  - systems/*.md and designSystemsIndex.ts: unmodified copies of DESIGN.md files from
+    design-systems/<id>/ (apple, linear-app, stripe, vercel, notion, airbnb, supabase,
+    figma, claude, cursor, raycast, spotify, github, discord, x-ai, openai, mistral-ai,
+    posthog, sentry, cloudflare-kumo, framer, webflow, shopify, slack, uber, nike,
+    tesla, ibm, mongodb, resend, zapier, airtable, intercom, miro, coinbase, revolut,
+    wise, elevenlabs, cohere, perplexity, warp). These describe publicly observable
+    design characteristics of third-party products; all brand names and trademarks
+    belong to their respective owners and are not endorsed by or affiliated with them.
+
+FUNIBER Figma Import plugin (figma-plugin/) and Figma export/import
+(apps/web/src/components/design/figma/)
+  Derived from Open Design (https://github.com/nexu-io/open-design),
+  Copyright the Open Design contributors. Licensed under the Apache License,
+  Version 2.0; you may obtain a copy at http://www.apache.org/licenses/LICENSE-2.0.
+  - figma-plugin/: copy of figma-plugin/ (code.js, ui.html, manifest.json, IR.md,
+    README.md), rebranded "FUNIBER Figma Import"; file suffix changed to
+    .fidesign-figma.json.
+  - capture.script.ts: adapted from clipper/capture.js (Figma IR builder), rewritten
+    to run inside a sandboxed preview iframe.
+  - figmaImport.ts: adapted from apps/daemon/src/plugins/atoms/figma-extract.ts
+    (walkNode / liftTokens), emitting DESIGN.md.
