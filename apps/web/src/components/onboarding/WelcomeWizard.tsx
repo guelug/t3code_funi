@@ -491,7 +491,7 @@ function ConnectAccountOption({
             <p className="text-sm text-muted-foreground">
               Run this on each computer you want to connect.
             </p>
-            <CommandBlock command="npx t3 connect" className="mt-3" />
+            <CommandBlock command="fcode connect" className="mt-3" />
             <p className="mt-3 text-xs text-muted-foreground">
               Keep Funi Code running. Select the computers you want to set up above.
             </p>
@@ -605,7 +605,7 @@ function PairingForm({
             <p className="pt-3 text-sm text-muted-foreground">
               Run this on the computer with your code.
             </p>
-            <CommandBlock command="npx t3 pair" className="mt-2" />
+            <CommandBlock command="fcode pair" className="mt-2" />
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
               Start Funi Code first, or run <code className="font-mono">npx t3 serve</code>. Add{" "}
               <code className="font-mono">--tailscale</code> to use your tailnet.

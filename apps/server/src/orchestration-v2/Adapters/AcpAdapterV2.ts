@@ -662,7 +662,7 @@ function negotiatedCapabilities(
     },
     tools: {
       ...base.tools,
-      // The stdio bridge (`t3 acp-mcp-bridge`) makes the t3-code MCP toolkit
+      // The stdio bridge (`fcode acp-mcp-bridge`) makes the t3-code MCP toolkit
       // available regardless of the agent's optional http/sse MCP support.
       supportsMcpTools: true,
     },
@@ -690,7 +690,7 @@ function acpMcpContext(threadId: ThreadId | null, self: SelfInvocation): AcpMcpC
   // Stdio is ACP's required baseline MCP transport. Agents that advertise
   // optional http support still routinely fail to wire injected http servers
   // through to their backend (codex-acp 1.2.0 and pi-acp both drop them), so
-  // every ACP session gets the `t3 acp-mcp-bridge` stdio server, which
+  // every ACP session gets the `fcode acp-mcp-bridge` stdio server, which
   // forwards JSON-RPC to T3's authenticated MCP endpoint. The credential
   // travels via environment variables, never the command line.
   return {
