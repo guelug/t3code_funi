@@ -205,6 +205,8 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+          # The root package.json pins pnpm; this job only needs npx.
+          package-manager-cache: false
       - name: Package
         working-directory: extensions/vscode
         run: |
