@@ -16,6 +16,7 @@ import {
   buildCheckedAcpRegistrySnapshot,
   checkAcpRegistryProviderReadiness,
   checkAcpRegistryProviderStatus,
+  splitProviderQualifiedModelName,
 } from "./AcpRegistryDriver.ts";
 
 const decodeSettings = Schema.decodeSync(AcpRegistrySettings);
@@ -435,4 +436,22 @@ describe("acpRegistrySnapshotReadiness", () => {
       });
     }),
   );
+});
+
+describe("FUNIBER: provider-qualified ACP model names", () => {
+  it("leads with the model and keeps the provider as subProvider", () => {
+    expect(
+      splitProviderQualifiedModelName(
+        "Claude Subscription DirectSDK (Experimental) · claude-sonnet-5-5[1m]",
+      ),
+    ).toEqual({
+      name: "claude-sonnet-5-5[1m]",
+      shortName: "claude-sonnet-5-5[1m]",
+      subProvider: "Claude Subscription DirectSDK (Experimental)",
+    });
+    expect(splitProviderQualifiedModelName("OpenRouter · anthropic/claude-opus-5.5").name).toBe(
+      "anthropic/claude-opus-5.5",
+    );
+    expect(splitProviderQualifiedModelName("Default")).toEqual({ name: "Default" });
+  });
 });

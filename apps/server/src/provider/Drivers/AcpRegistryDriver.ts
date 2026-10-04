@@ -91,6 +91,23 @@ const makeUnsupportedTextGeneration = (): TextGeneration["Service"] => {
   };
 };
 
+/**
+ * FUNIBER fork: agents like Hermes name models "Provider · model". Split them so
+ * pickers lead with the model and show the provider underneath.
+ */
+export function splitProviderQualifiedModelName(name: string): {
+  readonly name: string;
+  readonly shortName?: string;
+  readonly subProvider?: string;
+} {
+  const index = name.lastIndexOf(" · ");
+  if (index <= 0) return { name };
+  const provider = name.slice(0, index).trim();
+  const model = name.slice(index + 3).trim();
+  if (provider.length === 0 || model.length === 0) return { name };
+  return { name: model, shortName: model, subProvider: provider };
+}
+
 function modelsFromDiscovery(
   discovery:
     | Pick<AcpRegistryLiveConfiguration, "models" | "currentModelId" | "configOptions">
@@ -117,7 +134,7 @@ function modelsFromDiscovery(
         ]
       : discovered.map((model) => ({
           slug: model.id,
-          name: model.name,
+          ...splitProviderQualifiedModelName(model.name),
           isCustom: false,
           ...(model.id === discovery?.currentModelId ? { isDefault: true } : {}),
           capabilities,
