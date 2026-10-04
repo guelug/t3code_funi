@@ -1,0 +1,116 @@
+{
+  "name": "funi-code",
+  "displayName": "Funi Code",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Funi Code inside VS Code: Rebe/Hermes, Codex, Claude and OpenRouter with the same threads as the desktop app.",
+  "categories": [
+    "AI",
+    "Other",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "agent",
+    "claude",
+    "codex",
+    "funi code",
+    "funiber",
+    "hermes"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/guelug/t3code_funi"
+  },
+  "publisher": "funiber",
+  "main": "./extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "funiCode",
+          "title": "Funi Code",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "funiCode": [
+        {
+          "type": "webview",
+          "id": "funiCode.chat",
+          "name": "Funi Code"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "funiCode.openPanel",
+        "title": "Funi Code: Open in Editor",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "funiCode.addWorkspace",
+        "title": "Funi Code: Add This Folder as a Project"
+      },
+      {
+        "command": "funiCode.reconnect",
+        "title": "Funi Code: Reconnect",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "funiCode.signOut",
+        "title": "Funi Code: Forget VS Code Session"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "funiCode.reconnect",
+          "when": "view == funiCode.chat",
+          "group": "navigation@1"
+        },
+        {
+          "command": "funiCode.openPanel",
+          "when": "view == funiCode.chat",
+          "group": "navigation@2"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Funi Code",
+      "properties": {
+        "funiCode.cliPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the fcode command. Leave empty to use fcode from PATH or the installed Funi Code app."
+        },
+        "funiCode.baseDir": {
+          "type": "string",
+          "default": "",
+          "description": "Funi Code data directory (T3CODE_HOME). Leave empty for the default (~/.t3)."
+        },
+        "funiCode.autoAddWorkspace": {
+          "type": "boolean",
+          "default": true,
+          "description": "Add the open folder as a Funi Code project when connecting."
+        },
+        "funiCode.openOnStartup": {
+          "type": "boolean",
+          "default": false,
+          "description": "Open Funi Code in an editor tab when VS Code starts."
+        }
+      }
+    }
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "extensionKind": [
+    "ui"
+  ],
+  "icon": "media/icon.png",
+  "engines": {
+    "vscode": "^1.85.0"
+  }
+}
