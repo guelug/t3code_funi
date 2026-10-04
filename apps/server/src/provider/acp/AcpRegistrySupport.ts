@@ -208,6 +208,16 @@ export interface AcpRegistryIndex {
   readonly agents: ReadonlyArray<AcpRegistryAgent>;
 }
 
+/** Index containing only the FUNIBER local agents, used when the registry is unavailable. */
+export function localOnlyRegistryIndex(): AcpRegistryIndex {
+  return { version: "local", agents: withFuniberLocalAgents([]) };
+}
+
+/** True for agents the FUNIBER fork runs locally without the ACP Registry. */
+export function isFuniberLocalAgent(agentId: string): boolean {
+  return agentId.trim() === FUNIBER_HERMES_AGENT_ID;
+}
+
 const decodeRegistryIndexEnvelope = Schema.decodeUnknownEffect(AcpRegistryIndexEnvelope);
 const decodeRegistryAgent = Schema.decodeUnknownOption(AcpRegistryAgent);
 const decodeJson = Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.Unknown));
@@ -1624,7 +1634,9 @@ export const makeAcpRegistryCatalog = Effect.fn("AcpRegistryCatalog.make")(funct
 
   const prepare: AcpRegistryCatalog["Service"]["prepare"] = (input) =>
     Effect.gen(function* () {
-      const registry = yield* refreshRegistry();
+      const registry = isFuniberLocalAgent(input.agentId)
+        ? yield* refreshRegistry().pipe(Effect.orElseSucceed(localOnlyRegistryIndex))
+        : yield* refreshRegistry();
       const agent = yield* findAgent(registry, input.agentId);
       const distribution = yield* compatibleDistribution(agent, "auto");
       if (agent.id === FUNIBER_HERMES_AGENT_ID) {
@@ -1661,7 +1673,9 @@ export const makeAcpRegistryCatalog = Effect.fn("AcpRegistryCatalog.make")(funct
     Effect.gen(function* () {
       const agentId = settings.agentId.trim();
       if (agentId.length === 0) return { status: "unconfigured" } as const;
-      const registry = yield* loadCachedRegistry();
+      const registry = isFuniberLocalAgent(agentId)
+        ? yield* loadCachedRegistry().pipe(Effect.orElseSucceed(localOnlyRegistryIndex))
+        : yield* loadCachedRegistry();
       const agent = registry.agents.find((candidate) => candidate.id === agentId);
       if (agent === undefined) return { status: "not_found", agentId } as const;
       const documentationUrl = agent.website ?? agent.repository;
@@ -1767,7 +1781,9 @@ export const makeAcpRegistryCatalog = Effect.fn("AcpRegistryCatalog.make")(funct
           detail: "ACP Registry provider requires a registry agent ID.",
         });
       }
-      const registry = yield* loadRegistry();
+      const registry = isFuniberLocalAgent(agentId)
+        ? yield* loadRegistry().pipe(Effect.orElseSucceed(localOnlyRegistryIndex))
+        : yield* loadRegistry();
       const agent = yield* findAgent(registry, agentId);
       const distribution = yield* compatibleDistribution(agent, settings.distribution);
 

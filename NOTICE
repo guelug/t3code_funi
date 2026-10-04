@@ -31,3 +31,9 @@ FUNIBER Figma Import plugin (figma-plugin/) and Figma export/import
     to run inside a sandboxed preview iframe.
   - figmaImport.ts: adapted from apps/daemon/src/plugins/atoms/figma-extract.ts
     (walkNode / liftTokens), emitting DESIGN.md.
+
+------------------------------------------------------------------------------
+Hermes Agent icon (apps/web/public/hermes-icon.svg)
+Copyright (c) Nous Research. MIT License.
+Source: https://github.com/NousResearch/hermes-agent (website/static/img/favicon.svg)
+Used to identify the Hermes Agent provider. Hermes is a Nous Research project.

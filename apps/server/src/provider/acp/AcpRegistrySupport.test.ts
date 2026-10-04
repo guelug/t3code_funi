@@ -1552,4 +1552,11 @@ describe("FUNIBER local agents", () => {
     expect(AcpRegistrySupport.localAgentCommand("hermes", " /opt/h/hermes ")).toBe("/opt/h/hermes");
     expect(AcpRegistrySupport.localAgentCommand("devin", "")).toBe("");
   });
+
+  it("serves Hermes without any cached or reachable registry", () => {
+    const index = AcpRegistrySupport.localOnlyRegistryIndex();
+    expect(index.agents.map((agent) => agent.id)).toEqual(["hermes"]);
+    expect(AcpRegistrySupport.isFuniberLocalAgent(" hermes ")).toBe(true);
+    expect(AcpRegistrySupport.isFuniberLocalAgent("devin")).toBe(false);
+  });
 });

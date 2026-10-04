@@ -88,12 +88,12 @@ function HermesPinnedBotRow({
       className="group mx-2 mb-1 flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left text-sm text-foreground outline-hidden hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
       aria-label="Open Hermes"
     >
-      <span
+      <img
+        src="/hermes-icon.svg"
+        alt=""
         aria-hidden
-        className="flex size-6 shrink-0 items-center justify-center rounded-md bg-[#00699e] text-[11px] font-bold text-white"
-      >
-        H
-      </span>
+        className="size-6 shrink-0 select-none rounded-md"
+      />
       <span className="min-w-0 flex-1 truncate font-medium">Hermes</span>
       <span className="text-xs text-muted-foreground">{busy ? "Opening…" : "Bot"}</span>
     </button>
