@@ -16,7 +16,7 @@ describe("byokProvider.logic", () => {
       { name: "ANTHROPIC_API_KEY", value: "", sensitive: false },
     ]);
     const models = (inst.config as { customModels: { slug: string }[] }).customModels;
-    expect(models.map((m) => m.slug)).toContain("anthropic/claude-sonnet-4.5");
+    expect(models.map((m) => m.slug)).toContain("anthropic/claude-sonnet-5.5");
   });
   it("uses custom base url and dedupes extra models", () => {
     const inst = buildByokProviderInstance({
