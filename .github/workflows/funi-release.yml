@@ -1,0 +1,255 @@
+# FUNIBER fork: free release pipeline for Funi Code.
+#
+# Runs only on GitHub-hosted runners (free for public repos) and needs no
+# secrets: builds are unsigned until signing secrets are added. Push a tag
+# `v0.1.0` (or run it by hand) to build macOS (dmg), Windows (nsis .exe) and
+# Linux (AppImage + deb) and publish them, plus the VS Code extension, as a
+# GitHub Release that the in-app updater follows.
+name: Funi Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version without the leading v (e.g. 0.1.0)"
+        required: true
+      prerelease:
+        description: "Mark as prerelease"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: funi-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+    steps:
+      - id: v
+        shell: bash
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            version="${{ inputs.version }}"
+          else
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          version="${version#v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Invalid version '$version'"; exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+  bundle:
+    name: Build JS bundle
+    needs: version
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: false
+
+      - name: Install
+        run: vp install --filter=t3... --filter=@t3tools/web... --filter=@t3tools/desktop... --filter=@t3tools/scripts...
+
+      - name: Align package versions
+        run: node scripts/update-release-package-versions.ts "${{ needs.version.outputs.version }}"
+
+      - name: Linux build libraries
+        run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev pkg-config
+
+      - name: Build
+        run: vp run build:desktop
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: js-bundle
+          path: |
+            apps/server/dist
+            apps/desktop/dist-electron
+          if-no-files-found: error
+          retention-days: 1
+
+  desktop:
+    name: Build ${{ matrix.label }}
+    needs: [version, bundle]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macOS arm64
+            runner: macos-latest
+            platform: mac
+            target: dmg
+            arch: arm64
+            rust_target: aarch64-apple-darwin
+          - label: Windows x64
+            runner: windows-latest
+            platform: win
+            target: nsis
+            arch: x64
+            rust_target: x86_64-pc-windows-msvc
+          - label: Linux x64
+            runner: ubuntu-latest
+            platform: linux
+            target: AppImage
+            arch: x64
+            rust_target: x86_64-unknown-linux-gnu
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: ${{ matrix.platform != 'win' }}
+          run-install: false
+
+      - name: Install desktop dependencies
+        run: vp install --filter=@t3tools/desktop... --filter=t3... --filter=@t3tools/scripts...
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - name: Align package versions
+        run: node scripts/update-release-package-versions.ts "${{ needs.version.outputs.version }}"
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: js-bundle
+          path: apps
+
+      - name: Spectre-mitigated MSVC libs
+        if: matrix.platform == 'win'
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $installPath = & $vswhere -products * -latest -property installationPath
+          $setupExe = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
+          $proc = Start-Process -FilePath $setupExe `
+            -ArgumentList "modify", "--installPath", "`"$installPath`"", "--add", `
+            "Microsoft.VisualStudio.Component.VC.Runtimes.x86.x64.Spectre", "--quiet", "--norestart" `
+            -Wait -PassThru -NoNewWindow
+          if ($null -eq $proc -or $proc.ExitCode -ne 0) { exit 1 }
+
+      - name: Linux desktop build libraries
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsecret-1-dev pkg-config imagemagick rpm
+
+      - name: Build installer
+        shell: bash
+        run: |
+          vp run dist:desktop:artifact \
+            --platform "${{ matrix.platform }}" \
+            --target "${{ matrix.target }}" \
+            --arch "${{ matrix.arch }}" \
+            --build-version "${{ needs.version.outputs.version }}" \
+            --skip-build --verbose
+
+      - name: Collect assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          shopt -s nullglob
+          for f in release/*.dmg release/*.zip release/*.AppImage release/*.deb release/*.exe release/*.blockmap release/*.yml; do
+            [[ "$f" == */builder-debug.yml ]] && continue
+            cp "$f" out/
+          done
+          ls -la out
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
+          path: out/*
+          if-no-files-found: error
+
+  vscode:
+    name: Package VS Code extension
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: extensions/vscode
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Package
+        working-directory: extensions/vscode
+        run: |
+          npm pkg set version="${{ needs.version.outputs.version }}"
+          npx -y @vscode/vsce@4.0.0 package --no-dependencies -o "funi-code-vscode-${{ needs.version.outputs.version }}.vsix"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: vscode-extension
+          path: extensions/vscode/*.vsix
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: [version, desktop, vscode]
+    if: ${{ !cancelled() && needs.vscode.result == 'success' && needs.desktop.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: assets
+          merge-multiple: true
+      - run: ls -la assets
+      - name: Release notes
+        shell: bash
+        run: |
+          cat > notes.md <<'EOF'
+          ## Funi Code ${{ needs.version.outputs.tag }}
+
+          | Sistema | Descarga |
+          |---|---|
+          | Windows | `Funi-Code-*-x64.exe` → ejecutar. Si sale SmartScreen: **Más información → Ejecutar de todas formas** (aún sin firma). |
+          | macOS (Apple Silicon) | `Funi-Code-*-arm64.dmg` → arrastrar a Aplicaciones. Primera vez: clic derecho → Abrir. |
+          | Linux | `.AppImage` (cualquier distro) o `.deb` (Debian/Ubuntu). |
+          | VS Code / Cursor | `funi-code-vscode-*.vsix` → Extensions → … → **Install from VSIX**. Necesita la app instalada y abierta. |
+
+          Basado en [T3 Code](https://github.com/pingdotgg/t3code) (MIT).
+          EOF
+      - uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: Funi Code ${{ needs.version.outputs.tag }}
+          body_path: notes.md
+          prerelease: ${{ inputs.prerelease || false }}
+          make_latest: ${{ !(inputs.prerelease || false) }}
+          files: assets/*
+          fail_on_unmatched_files: false
+          token: ${{ github.token }}
