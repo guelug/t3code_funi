@@ -86,6 +86,7 @@ import { stackedThreadToast, toastManager } from "../ui/toast";
 import { AddProviderInstanceDialog } from "./AddProviderInstanceDialog";
 import { AddByokProviderDialog } from "./AddByokProviderDialog";
 import type { ByokPreset } from "./byokProvider.logic";
+import { AddHermesButton } from "./AddHermesButton";
 import { ExpandableText } from "./ExpandableText";
 import { ProviderInstanceCard } from "./ProviderInstanceCard";
 import { UsageProviderSettings } from "./UsageProviderSettings";
@@ -1229,6 +1230,7 @@ export function EnvironmentProviderSettings({
                   />
                   <TooltipPopup side="top">Refresh provider status</TooltipPopup>
                 </Tooltip>
+                <AddHermesButton environmentId={environmentId} onSelected={setSelectedInstanceId} />
                 <Button size="xs" variant="ghost-muted" onClick={() => setByokPreset("openrouter")}>
                   OpenRouter
                 </Button>
