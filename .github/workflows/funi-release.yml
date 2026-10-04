@@ -106,18 +106,21 @@ jobs:
             target: dmg
             arch: arm64
             rust_target: aarch64-apple-darwin
+            resource_key: darwin-arm64
           - label: Windows x64
             runner: windows-latest
             platform: win
             target: nsis
             arch: x64
             rust_target: x86_64-pc-windows-msvc
+            resource_key: win32-x64
           - label: Linux x64
             runner: ubuntu-latest
             platform: linux
             target: AppImage
             arch: x64
             rust_target: x86_64-unknown-linux-gnu
+            resource_key: linux-x64
     steps:
       - uses: actions/checkout@v6
         with:
@@ -176,6 +179,23 @@ jobs:
             --build-version "${{ needs.version.outputs.version }}" \
             --skip-build --verbose
 
+      # The `fcode` CLI archive that scripts/install.sh / install.ps1 download.
+      - name: Build CLI archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          bin="t3-resource-monitor"; [[ "${{ matrix.platform }}" == "win" ]] && bin="$bin.exe"
+          dir="$RUNNER_TEMP/cli-resource-monitor/${{ matrix.resource_key }}"
+          mkdir -p "$dir"
+          cp "native/resource-monitor/target/${{ matrix.rust_target }}/release/$bin" "$dir/$bin"
+          node scripts/build-cli-archive.ts \
+            --platform "${{ matrix.platform }}" \
+            --arch "${{ matrix.arch }}" \
+            --version "${{ needs.version.outputs.version }}" \
+            --resource-monitor-dir "$RUNNER_TEMP/cli-resource-monitor" \
+            --output-dir release-cli
+          node scripts/smoke-cli-archive.ts --archive release-cli/* --expect-version "${{ needs.version.outputs.version }}"
+
       - name: Collect assets
         shell: bash
         run: |
@@ -186,6 +206,7 @@ jobs:
             [[ "$f" == */builder-debug.yml ]] && continue
             cp "$f" out/
           done
+          cp release-cli/* out/
           ls -la out
 
       - uses: actions/upload-artifact@v7
@@ -228,7 +249,15 @@ jobs:
         with:
           path: assets
           merge-multiple: true
-      - run: ls -la assets
+      - name: CLI checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd assets
+          shopt -s nullglob
+          archives=(t3-*.tar.gz t3-*.zip)
+          [[ ${#archives[@]} -gt 0 ]] && sha256sum "${archives[@]}" > SHA256SUMS
+          ls -la
       - name: Release notes
         shell: bash
         run: |
@@ -240,6 +269,7 @@ jobs:
           | Windows | `Funi-Code-*-x64.exe` → ejecutar. Si sale SmartScreen: **Más información → Ejecutar de todas formas** (aún sin firma). |
           | macOS (Apple Silicon) | `Funi-Code-*-arm64.dmg` → arrastrar a Aplicaciones. Primera vez: clic derecho → Abrir. |
           | Linux | `.AppImage` (cualquier distro) o `.deb` (Debian/Ubuntu). |
+          | Terminal (`fcode`) | macOS/Linux: `curl -fsSL https://raw.githubusercontent.com/guelug/t3code_funi/main/scripts/install.sh \| sh` · Windows PowerShell: `irm https://raw.githubusercontent.com/guelug/t3code_funi/main/scripts/install.ps1 \| iex` |
           | VS Code / Cursor | `funi-code-vscode-*.vsix` → Extensions → … → **Install from VSIX**. Necesita la app instalada y abierta. |
 
           Basado en [T3 Code](https://github.com/pingdotgg/t3code) (MIT).

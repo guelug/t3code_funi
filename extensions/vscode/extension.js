@@ -108,19 +108,49 @@ function resolveCli() {
       });
     }
   } else if (process.platform === "win32") {
+    // NSIS installs per-user under %LOCALAPPDATA%\Programs\<product>, or per-machine
+    // under Program Files. Windows builds ship the server in resources\server.asar.
     const local = process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local");
-    const app = path.join(local, "Programs", APP_NAME);
-    appCandidates.push({
-      exe: path.join(app, `${APP_NAME}.exe`),
-      entry: path.join(app, "resources", "app.asar", "apps", "server", "dist", "bin.mjs"),
-    });
+    const roots = [
+      path.join(local, "Programs"),
+      process.env.ProgramFiles,
+      process.env["ProgramFiles(x86)"],
+    ].filter(Boolean);
+    for (const root of roots) {
+      let names = [];
+      try {
+        names = fs.readdirSync(root).filter((name) => /^funi[ -]?code/i.test(name));
+      } catch {
+        continue;
+      }
+      for (const name of names) {
+        const app = path.join(root, name);
+        let exe;
+        try {
+          exe = fs
+            .readdirSync(app)
+            .find((file) => /^funi.*\.exe$/i.test(file) && !/uninstall/i.test(file));
+        } catch {
+          continue;
+        }
+        if (!exe) continue;
+        for (const archive of ["server.asar", "app.asar"]) {
+          const entry = path.join(app, "resources", archive, "apps", "server", "dist", "bin.mjs");
+          appCandidates.push({
+            exe: path.join(app, exe),
+            entry,
+            archive: path.join(app, "resources", archive),
+          });
+        }
+      }
+    }
   }
 
   const onPath = whichSync(process.platform === "win32" ? "fcode.cmd" : "fcode");
   if (onPath) return { command: onPath, args: [], env: {}, shell: process.platform === "win32" };
 
   for (const candidate of appCandidates) {
-    if (fs.existsSync(candidate.exe)) {
+    if (fs.existsSync(candidate.exe) && (!candidate.archive || fs.existsSync(candidate.archive))) {
       return {
         command: candidate.exe,
         args: [candidate.entry],
