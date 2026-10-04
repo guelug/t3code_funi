@@ -93,7 +93,15 @@ export const ProviderInstanceIcon = memo(function ProviderInstanceIcon(props: {
       style={accentStyle}
       data-provider-accent-color={props.accentColor}
     >
-      {isAcpRegistry ? (
+      {isAcpRegistry && props.acpRegistryAgentId?.trim() === "hermes" ? (
+        // FUNIBER fork: local Hermes Agent uses the official Nous Research icon.
+        <img
+          src="/hermes-icon.svg"
+          alt=""
+          aria-hidden
+          className={cn("size-5 shrink-0 select-none rounded-[4px]", props.iconClassName)}
+        />
+      ) : isAcpRegistry ? (
         <AcpRegistryAgentIcon
           // The search-tile radius would crop most of the glyph at these
           // inline sizes.
