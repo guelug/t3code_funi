@@ -9,13 +9,14 @@ import { ProviderDriverKind, type ProviderInstanceConfig } from "@t3tools/contra
 export const OPENROUTER_BASE_URL = "https://openrouter.ai/api";
 
 export const OPENROUTER_DEFAULT_MODELS: ReadonlyArray<{ slug: string; name: string }> = [
-  { slug: "anthropic/claude-sonnet-4.5", name: "Claude Sonnet 4.5" },
-  { slug: "anthropic/claude-opus-4.1", name: "Claude Opus 4.1" },
-  { slug: "openai/gpt-5", name: "GPT-5" },
+  { slug: "anthropic/claude-sonnet-5.5", name: "Claude Sonnet 5.5" },
+  { slug: "anthropic/claude-opus-5.5", name: "Claude Opus 5.5" },
+  { slug: "openai/gpt-5.5", name: "GPT-5.5" },
   { slug: "google/gemini-2.5-pro", name: "Gemini 2.5 Pro" },
-  { slug: "deepseek/deepseek-chat-v3.1", name: "DeepSeek V3.1" },
+  { slug: "deepseek/deepseek-v4-pro", name: "DeepSeek V4 Pro" },
+  { slug: "moonshotai/kimi-k3", name: "Kimi K3" },
+  { slug: "z-ai/glm-5.2", name: "GLM 5.2" },
   { slug: "qwen/qwen3-coder", name: "Qwen3 Coder" },
-  { slug: "moonshotai/kimi-k2", name: "Kimi K2" },
 ];
 
 export type ByokPreset = "openrouter" | "custom";

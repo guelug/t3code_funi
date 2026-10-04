@@ -31,6 +31,7 @@ export function AddByokProviderDialog(props: {
   const persist = usePersistEnvironmentProviderInstanceMutation(props.environmentId);
   const [apiKey, setApiKey] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [models, setModels] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -79,24 +80,43 @@ export function AddByokProviderDialog(props: {
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
             />
-            <Input
-              placeholder={
-                isOpenRouter ? "Base URL (optional, https://openrouter.ai/api)" : "Base URL"
-              }
-              aria-label="Base URL"
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
-            />
-            <Input
-              placeholder={
-                isOpenRouter
-                  ? "Extra model slugs (comma separated, optional)"
-                  : "Model slugs (comma separated)"
-              }
-              aria-label="Models"
-              value={models}
-              onChange={(e) => setModels(e.target.value)}
-            />
+            {isOpenRouter ? (
+              <p className="text-xs text-muted-foreground">
+                Only the key is needed. Get one at openrouter.ai/keys. Claude, GPT, Gemini,
+                DeepSeek, Kimi, GLM and Qwen models are added automatically.
+              </p>
+            ) : null}
+            {isOpenRouter ? (
+              <button
+                type="button"
+                className="self-start text-xs text-muted-foreground underline-offset-2 hover:underline"
+                onClick={() => setShowAdvanced((open) => !open)}
+              >
+                {showAdvanced ? "Hide advanced" : "Advanced (custom URL, extra models)"}
+              </button>
+            ) : null}
+            {!isOpenRouter || showAdvanced ? (
+              <>
+                <Input
+                  placeholder={
+                    isOpenRouter ? "Base URL (default https://openrouter.ai/api)" : "Base URL"
+                  }
+                  aria-label="Base URL"
+                  value={baseUrl}
+                  onChange={(e) => setBaseUrl(e.target.value)}
+                />
+                <Input
+                  placeholder={
+                    isOpenRouter
+                      ? "Extra model slugs (comma separated)"
+                      : "Model slugs (comma separated)"
+                  }
+                  aria-label="Models"
+                  value={models}
+                  onChange={(e) => setModels(e.target.value)}
+                />
+              </>
+            ) : null}
             {error ? <p className="text-xs text-destructive">{error}</p> : null}
           </div>
         </WizardPanel>
