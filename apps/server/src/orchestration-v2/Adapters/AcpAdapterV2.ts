@@ -226,6 +226,8 @@ export interface AcpAdapterV2Flavor {
   readonly onSessionConfigurationUpdate?: (
     configOptions: ReadonlyArray<EffectAcpSchema.SessionConfigOption>,
     modeState: AcpSessionModeState | undefined,
+    /** ACP v1 session model state (agents without a model config option, e.g. Hermes). */
+    modelState?: EffectAcpSchema.SessionModelState | null,
   ) => Effect.Effect<void>;
   readonly onUrlElicitation?: (input: {
     readonly elicitationId: string;
@@ -5408,6 +5410,7 @@ export function makeAcpAdapterV2(
                 flavor.onSessionConfigurationUpdate?.(
                   yield* runtime.getConfigOptions,
                   yield* runtime.getModeState,
+                  (yield* Ref.get(activeSessionSetup))?.sessionSetupResult.models,
                 ) ?? Effect.void
               );
             }
@@ -6387,6 +6390,7 @@ export function makeAcpAdapterV2(
             flavor.onSessionConfigurationUpdate?.(
               yield* runtime.getConfigOptions,
               yield* runtime.getModeState,
+              (yield* Ref.get(activeSessionSetup))?.sessionSetupResult.models,
             ) ?? Effect.void
           );
         });

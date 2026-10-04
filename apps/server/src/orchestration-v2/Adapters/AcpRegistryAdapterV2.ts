@@ -25,6 +25,7 @@ import * as ServerConfig from "../../config.ts";
 import {
   normalizeAcpRegistryCommands,
   normalizeAcpRegistryLiveConfiguration,
+  withLegacyModelState,
   normalizeAcpRegistryWebUrl,
 } from "../../provider/acp/AcpRegistryProbe.ts";
 import * as AcpRegistrySupport from "../../provider/acp/AcpRegistrySupport.ts";
@@ -213,10 +214,13 @@ export function makeAcpRegistryAdapterV2(options: AcpRegistryAdapterV2Options) {
               options.instanceId,
               normalizeAcpRegistryCommands(commands),
             ),
-          onSessionConfigurationUpdate: (configOptions, modeState) =>
+          onSessionConfigurationUpdate: (configOptions, modeState, modelState) =>
             runtimeCoordinator.publishLiveConfiguration(
               options.instanceId,
-              normalizeAcpRegistryLiveConfiguration(configOptions, modeState),
+              withLegacyModelState(
+                normalizeAcpRegistryLiveConfiguration(configOptions, modeState),
+                modelState,
+              ),
             ),
           onUrlElicitation: ({ elicitationId, url, message }) => {
             const normalizedUrl = normalizeAcpRegistryWebUrl(url);
