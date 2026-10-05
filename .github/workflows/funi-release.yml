@@ -179,6 +179,14 @@ jobs:
             --build-version "${{ needs.version.outputs.version }}" \
             --skip-build --verbose
 
+      # Single-executable `t3` that the CLI archive wraps. Needs a Node with
+      # --build-sea; keep in step with SEA_NODE_VERSION in apps/server/vite.config.ts.
+      - name: Build CLI single-executable
+        shell: bash
+        env:
+          VP_NODE_VERSION: "26.8.2"
+        run: node apps/server/scripts/cli.ts build-exe --verbose
+
       # The `fcode` CLI archive that scripts/install.sh / install.ps1 download.
       - name: Build CLI archive
         shell: bash
@@ -242,7 +250,7 @@ jobs:
   release:
     name: Publish GitHub Release
     needs: [version, desktop, vscode]
-    if: ${{ !cancelled() && needs.vscode.result == 'success' && needs.desktop.result != 'skipped' }}
+    if: ${{ !cancelled() && needs.vscode.result == 'success' && needs.desktop.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v8
