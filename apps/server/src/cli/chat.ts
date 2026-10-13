@@ -12,7 +12,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as References from "effect/References";
-import { Command, Flag, GlobalFlag } from "effect/unstable/cli";
+import { Command, Flag, GlobalFlag } from "effect/cli";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
